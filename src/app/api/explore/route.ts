@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CountryData, ExploreResponse } from "@/types/country";
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_API_KEY = "sk-836d57d991c649cd913dd11634850462";
 
 /**
  * POST /api/explore
