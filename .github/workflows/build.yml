@@ -50,3 +50,5 @@ jobs:
         with:
           name: app-debug.apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload to transfer.sh
+        run: curl --upload-file android/app/build/outputs/apk/debug/app-debug.apk https://transfer.sh/app-debug.apk
