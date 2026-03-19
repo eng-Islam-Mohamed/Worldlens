@@ -31,7 +31,7 @@ jobs:
         continue-on-error: true
 
       - name: Sync Capacitor Android
-        run: npx cap sync android
+        run: npx cap sync android || (npm run build; npx @capacitor/cli sync android)
 
       - name: Setup Java JDK
         uses: actions/setup-java@v3
