@@ -1,26 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
 import type { CountryData, ExploreResponse } from "@/types/country";
 
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+const DEEPSEEK_API_KEY = "sk-5f8648fdd8d44d63b4765065c37a79c0";
 
 /**
- * POST /api/explore
- * 1. Takes a raw user query (any language, typos, etc.)
- * 2. Uses DeepSeek to interpret and return an ISO alpha-3 code
- * 3. Fetches structured data from REST Countries API
- * 4. Returns compiled result
+ * Client-side country exploration.
+ * 1. Uses DeepSeek to interpret the query into an ISO country code
+ * 2. Fetches structured data from REST Countries API
+ * 3. Returns compiled result
  */
-export async function POST(request: NextRequest) {
+export async function exploreCountry(query: string): Promise<ExploreResponse> {
+  if (!query || query.trim().length === 0) {
+    return { success: false, error: "Please enter a country name." };
+  }
+
   try {
-    const { query } = await request.json();
-
-    if (!query || typeof query !== "string" || query.trim().length === 0) {
-      return NextResponse.json<ExploreResponse>(
-        { success: false, error: "Please enter a country name." },
-        { status: 400 }
-      );
-    }
-
     /* ── Step 1: Ask DeepSeek to normalize the country name ──────── */
     const deepseekResponse = await fetch(
       "https://api.deepseek.com/v1/chat/completions",
@@ -54,48 +47,38 @@ If you cannot identify any country, respond with:
 
     if (!deepseekResponse.ok) {
       console.error("DeepSeek API error:", deepseekResponse.status);
-      return NextResponse.json<ExploreResponse>(
-        {
-          success: false,
-          error: "AI interpretation service is temporarily unavailable.",
-        },
-        { status: 502 }
-      );
+      return {
+        success: false,
+        error: "AI interpretation service is temporarily unavailable.",
+      };
     }
 
     const deepseekData = await deepseekResponse.json();
     const aiContent = deepseekData.choices?.[0]?.message?.content?.trim();
 
     if (!aiContent) {
-      return NextResponse.json<ExploreResponse>(
-        { success: false, error: "Failed to interpret country name." },
-        { status: 500 }
-      );
+      return { success: false, error: "Failed to interpret country name." };
     }
 
     let interpretation: { code: string; name: string; error?: string };
     try {
-      // Strip markdown code fences if present
-      const cleaned = aiContent.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+      const cleaned = aiContent
+        .replace(/```json?\n?/g, "")
+        .replace(/```/g, "")
+        .trim();
       interpretation = JSON.parse(cleaned);
     } catch {
       console.error("Failed to parse DeepSeek response:", aiContent);
-      return NextResponse.json<ExploreResponse>(
-        { success: false, error: "Failed to interpret the input." },
-        { status: 500 }
-      );
+      return { success: false, error: "Failed to interpret the input." };
     }
 
     if (interpretation.error || !interpretation.code) {
-      return NextResponse.json<ExploreResponse>(
-        {
-          success: false,
-          error:
-            interpretation.error ||
-            "Could not identify a country from your input. Try again with a different name.",
-        },
-        { status: 404 }
-      );
+      return {
+        success: false,
+        error:
+          interpretation.error ||
+          "Could not identify a country from your input. Try again with a different name.",
+      };
     }
 
     /* ── Step 2: Fetch country data from REST Countries API ──────── */
@@ -104,13 +87,10 @@ If you cannot identify any country, respond with:
     );
 
     if (!countryRes.ok) {
-      return NextResponse.json<ExploreResponse>(
-        {
-          success: false,
-          error: `Could not fetch data for "${interpretation.name}". Please try again.`,
-        },
-        { status: 404 }
-      );
+      return {
+        success: false,
+        error: `Could not fetch data for "${interpretation.name}". Please try again.`,
+      };
     }
 
     const countryArr = await countryRes.json();
@@ -156,16 +136,13 @@ If you cannot identify any country, respond with:
       coatOfArms: raw.coatOfArms || {},
     };
 
-    return NextResponse.json<ExploreResponse>({
+    return {
       success: true,
       data: country,
       interpretedAs: interpretation.name,
-    });
+    };
   } catch (error) {
     console.error("Explore API error:", error);
-    return NextResponse.json<ExploreResponse>(
-      { success: false, error: "An unexpected error occurred." },
-      { status: 500 }
-    );
+    return { success: false, error: "An unexpected error occurred." };
   }
 }

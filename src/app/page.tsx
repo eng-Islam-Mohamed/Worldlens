@@ -12,7 +12,8 @@ import Features from "@/components/Features";
 import HowItWorks from "@/components/HowItWorks";
 import Stats from "@/components/Stats";
 import Footer from "@/components/Footer";
-import type { CountryData, ExploreResponse } from "@/types/country";
+import { exploreCountry } from "@/lib/exploreApi";
+import type { CountryData } from "@/types/country";
 
 export default function Home() {
   const [country, setCountry] = useState<CountryData | null>(null);
@@ -28,13 +29,7 @@ export default function Home() {
     setHasSearched(true);
 
     try {
-      const res = await fetch("/api/explore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-
-      const data: ExploreResponse = await res.json();
+      const data = await exploreCountry(query);
 
       if (data.success && data.data) {
         setCountry(data.data);
